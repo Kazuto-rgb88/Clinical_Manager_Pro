@@ -15,6 +15,8 @@ function ArchivosPage() {
   const [archivo, setArchivo] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [urlResultado, setUrlResultado] = useState("");
+  // ✨ Ahora es una lista vacía para que soporte muchos archivos
+  const [listaArchivos, setListaArchivos] = useState([]);
   const navigate = useNavigate();
 
   const handleFileChange = (e) => {
@@ -48,8 +50,18 @@ function ArchivosPage() {
       const res = await client.post("/archivos/subir", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setUrlResultado(res.data.url);
-      alert("¡Archivo en la nube!");
+
+      // ✨ MAGIA: Guardamos el archivo en la lista con su nombre y su link
+      const nuevoArchivo = {
+        nombre: archivo.name,
+        url: res.data.url,
+      };
+
+      setListaArchivos([...listaArchivos, nuevoArchivo]);
+
+      // ✨ LIMPIEZA AUTOMÁTICA: El selector queda libre para el siguiente archivo
+      setArchivo(null);
+      alert("¡Archivo guardado en la lista!");
     } catch (error) {
       console.error(error);
       alert("Error al subir.");
@@ -59,7 +71,7 @@ function ArchivosPage() {
   };
 
   // NUEVA FUNCIÓN PARA BORRAR DE LA NUBE
-  const borrarDeLaNube = async () => {
+  const borrarDeLaNube = async (urlParaBorrar) => {
     if (
       !window.confirm(
         "¿Estás seguro de eliminar este archivo de la nube para siempre?",
@@ -68,21 +80,24 @@ function ArchivosPage() {
       return;
 
     try {
-      // Extraemos el nombre del archivo de la URL de Supabase
-      const nombreArchivo = urlResultado.split("/").pop();
+      // ✨ Extraemos el nombre del archivo de la URL que pasamos
+      const nombreArchivo = urlParaBorrar.split("/").pop();
 
       await client.delete("/archivos/borrar", {
-        data: { nombreArchivo }, // Mandamos el nombre en el body
+        data: { nombreArchivo },
       });
 
       alert("Archivo eliminado de la faz de la tierra");
-      quitarArchivo(); // Limpiamos la pantalla
+
+      // ✨ Quitamos el archivo de la lista visual después de borrarlo de la nube
+      setListaArchivos(
+        listaArchivos.filter((doc) => doc.url !== urlParaBorrar),
+      );
     } catch (error) {
       console.error(error);
       alert("No se pudo borrar del servidor.");
     }
   };
-
   return (
     <div className="p-10 min-h-screen text-white bg-slate-950">
       <button
@@ -137,16 +152,13 @@ function ArchivosPage() {
                     <Eye size={16} className="text-blue-400" /> Mirar archivo
                   </button>
 
-                  {/* Si ya se subió, este botón no limpia pantalla, borra nube */}
-                  {!urlResultado && (
-                    <button
-                      type="button"
-                      onClick={quitarArchivo}
-                      className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white p-2 rounded-lg transition-all"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={quitarArchivo}
+                    className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white p-2 rounded-lg transition-all"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               </div>
             )}
@@ -154,47 +166,52 @@ function ArchivosPage() {
 
           <button
             type="submit"
-            disabled={subiendo || !archivo || urlResultado}
+            disabled={subiendo || !archivo}
             className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-              subiendo || urlResultado
+              subiendo
                 ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-                : "bg-purple-600 hover:bg-purple-500"
+                : "bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-500/20"
             }`}
           >
-            {subiendo
-              ? "Procesando..."
-              : urlResultado
-                ? "Ya está en la nube"
-                : "Subir ahora"}
+            {subiendo ? "Procesando..." : "Subir ahora"}
           </button>
         </form>
 
-        {urlResultado && (
-          <div className="mt-8 p-4 bg-slate-800 border border-emerald-500/30 rounded-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="text-emerald-500" />
-                <p className="text-sm font-bold text-emerald-500 italic">
-                  Guardado con éxito
-                </p>
-              </div>
-              <a
-                href={urlResultado}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-400 underline text-xs font-bold"
+        {/* LISTA DINÁMICA DE DOCUMENTOS SUBIDOS */}
+        {listaArchivos.length > 0 && (
+          <div className="mt-8 space-y-3 pt-6 border-t border-slate-800">
+            <h2 className="text-xs font-bold text-slate-500 uppercase italic mb-4">
+              Archivos en esta sesión:
+            </h2>
+            {listaArchivos.map((doc, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-slate-800/40 border border-slate-700/50 rounded-xl hover:border-purple-500/30 transition-colors"
               >
-                Link Directo
-              </a>
-            </div>
-
-            {/* BOTÓN DEFINITIVO DE ELIMINAR NUBE */}
-            <button
-              onClick={borrarDeLaNube}
-              className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-600 text-red-500 hover:text-white py-2 rounded-lg text-xs font-bold transition-all"
-            >
-              <Trash2 size={14} /> Eliminar archivo de la nube
-            </button>
+                <div className="flex items-center gap-3">
+                  <FileText size={18} className="text-purple-400" />
+                  <span className="text-xs font-bold truncate max-w-[150px]">
+                    {doc.nombre}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all"
+                  >
+                    <Eye size={14} />
+                  </a>
+                  <button
+                    onClick={() => borrarDeLaNube(doc.url)} // ✨ Le pasamos la URL del archivo
+                    className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
