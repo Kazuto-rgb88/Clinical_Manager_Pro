@@ -3,7 +3,7 @@ import axios from "axios";
 // Creamos una instancia centralizada para no repetir la URL cada vez
 const client = axios.create({
   // Lo llamamos 'client' para que coincida con tus imports
-  baseURL: "http://localhost:3000/api", // La dirección de tu motor de Node
+  baseURL: "https://clinical-manager-backend.onrender.com/api", // La dirección de tu motor de Node
   withCredentials: true, // Esto será útil para cookies y seguridad más adelante
 });
 
