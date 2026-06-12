@@ -17,7 +17,6 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://boisterous-peony-7a5c22.netlify.app", // ✨ URL actual de Netlify
       "https://clinical-manager-pro.netlify.app", // ✨ URL que le pondrás después
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
